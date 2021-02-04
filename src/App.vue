@@ -11,10 +11,11 @@ import { sortMethods } from './constants';
 
 Vue.use(Vuex);
 
-const store = new Vuex.Store({
+export const store = new Vuex.Store({
   state: {
     sortMethod: 'selection',
     sortMethods,
+    arrayLength: 100,
   },
   mutations: {
     changeSortMethod(state, method) {
@@ -22,6 +23,7 @@ const store = new Vuex.Store({
     },
   },
 });
+
 
 export default {
   name: 'App',

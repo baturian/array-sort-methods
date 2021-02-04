@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import Router from 'vue-router';
-import SortMehodsSelect from '@/components/sortMethodsSelect';
+import SortMehodsView from '@/components/sortMethods';
 
 Vue.use(Router);
 
@@ -8,8 +8,8 @@ export default new Router({
   routes: [
     {
       path: '/',
-      name: 'SortMehodsSelect',
-      component: SortMehodsSelect,
+      name: 'SortMehodsView',
+      component: SortMehodsView,
     },
   ],
 });

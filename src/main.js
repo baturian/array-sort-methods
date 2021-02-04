@@ -6,6 +6,7 @@ import 'vue-material/dist/vue-material.min.css';
 import 'vue-material/dist/theme/default.css';
 import App from './App';
 import router from './router';
+import './styles/main.css';
 
 Vue.use(MdField);
 Vue.use(MdList);
@@ -15,7 +16,7 @@ Vue.use(MdButton);
 Vue.config.productionTip = false;
 
 /* eslint-disable no-new */
-new Vue({
+window.vueApp = new Vue({
   el: '#app',
   router,
   components: { App },
