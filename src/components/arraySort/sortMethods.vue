@@ -7,43 +7,47 @@
         <md-button @click="startSorting" class="md-raised md-primary">Sort</md-button>
       </div>
       <div class="tabbar-layout__bottom-controls bottom-controls">
-        <CustomSlider></CustomSlider>
+        <ArrayLengthSlider />
+        <TimeoutSlider />
       </div>
     </div>
     <div class="array-vizual-block">
-      <div
-        class="array-item"
+      <ArrayItem
         v-for="value in values"
-        :class="{
-          active: active === value.id || activeGroup.find(id => value.id === id),
-          selected: selected === value.id,
-          sorted: value.isSorted || sorted
-        }"
         :key="value.id"
-        style="height: 100%">
-        <div
-          class="array-item__main-block main-block"
-          :style="{ height: value.height + '%' }">
-        </div>
-      </div>
+        :active="active === value.id || activeGroup.some(id => value.id === id)"
+        :selected="selected === value.id"
+        :sorted="sortedGroup.some(id => value.id === id) || sorted"
+        :current="current === value.id"
+        :height="value.height"
+        style="height: 100%"
+      >
+      </ArrayItem>
     </div>
   </div>
 </template>
 
 <script>
-import TimedOutBehaivor from '../services/timedOutBehaivor';
-import AnimationFrames from '../services/animationFrames';
+/* eslint-disable no-plusplus */
+import TimedOutBehaivor from '../../services/timedOutBehaivor';
+import PlaceHolderArray from '../../services/placeHolderArray';
+import AnimationFrames from '../../services/animationFrames';
 import SortingMethodsSelect from './sortMethodsSelect';
-import CustomSlider from './slider';
+import ArrayLengthSlider from './arrayLengthSlider';
+import TimeoutSlider from './timeoutSlider';
+import ArrayItem from './arrayItem';
 
-const timedOutBehaivor = new TimedOutBehaivor(50);
+const timedOutBehaivor = new TimedOutBehaivor(100);
 const animationFrames = new AnimationFrames();
+const placeHolderArrayService = new PlaceHolderArray();
 
 export default {
   name: 'SortMethodsVisualization',
   components: {
     SortingMethodsSelect,
-    CustomSlider,
+    ArrayLengthSlider,
+    ArrayItem,
+    TimeoutSlider,
   },
   data() {
     return {
@@ -51,17 +55,25 @@ export default {
       activeGroup: [],
       selected: null,
       active: null,
+      sortedGroup: [],
       sorted: false,
+      current: null,
     };
   },
   computed: {
     arrayLength() {
       return this.$store.state.arrayLength;
     },
+    timeoutMS() {
+      return this.$store.state.timeoutMS;
+    },
   },
   watch: {
     arrayLength() {
       timedOutBehaivor.comlpete(this.shuffle, this);
+    },
+    timeoutMS(value) {
+      animationFrames.setDefaultTimeout(value);
     },
   },
   methods: {
@@ -70,6 +82,10 @@ export default {
       switch (this.$store.state.sortMethod) {
         case 'quick': {
           fn = this.quickSort;
+          break;
+        }
+        case 'bubble': {
+          fn = this.bubbleSort;
           break;
         }
         default: {
@@ -81,7 +97,6 @@ export default {
     shuffle() {
       this.stopAnimation();
       let array = [];
-      // eslint-disable-next-line no-plusplus
       for (let i = 0; i < this.arrayLength; i++) {
         const maxHeightPoints = this.arrayLength;
         const height = ((i + 1) * 100) / maxHeightPoints;
@@ -90,62 +105,65 @@ export default {
       array = array.sort(() => 0.5 - Math.random());
       this.values = array;
     },
+    // SELECTION SORT
     findSmallest(array, i) {
       let index = i;
       let smallestIndex = i;
       let smallest = array[smallestIndex];
-      // eslint-disable-next-line no-plusplus
       for (index; index < array.length; index++) {
         if (array[index].height < smallest.height) {
           smallest = array[index];
           smallestIndex = index;
         }
+        animationFrames
+          .addStep(this.selectionSortAnimatedIteration, this, [array[index], smallest]);
       }
       return smallestIndex;
     },
     selectionSort() {
       this.stopAnimation();
-      const copyArray = Array.from(this.values);
-      // eslint-disable-next-line no-plusplus
-      for (let i = 0; i < copyArray.length; i++) {
-        animationFrames.addStep(this.selectionSortStep.bind(this, i));
+      placeHolderArrayService.array = Array.from(this.values);
+      const array = placeHolderArrayService.array;
+      for (let i = 0; i < array.length; i++) {
+        const smallestIndex = this.findSmallest(array, i);
+        const smallest = array[smallestIndex];
+        const current = array[i];
+
+        [array[smallestIndex], array[i]] = [current, smallest];
+        animationFrames
+          .addStep(this.selectionSortAnimatedStep, this, [Array.from(array), smallest]);
       }
-      animationFrames.addStep(this.sortEnd.bind(this));
+      animationFrames.addStep(this.sortEnd, this);
       animationFrames.startAnimation();
     },
-    selectionSortStep(i) {
-      const array = this.values;
-      const smallestIndex = this.findSmallest(array, i);
-      const smallest = array[smallestIndex];
-      const current = array[i];
-
-      this.selected = current.id;
-      if (current.id !== smallest.id) this.active = smallest.id;
-      if (i === array.length - 1) {
-        this.selected = null;
-        this.active = null;
-      }
-      smallest.isSorted = true;
-      [this.values[smallestIndex], this.values[i]] = [current, smallest];
+    selectionSortAnimatedIteration(current, smallest) {
+      this.selected = smallest.id;
+      this.showCurrentItem(current);
     },
+    selectionSortAnimatedStep(array, smallest) {
+      this.sortedGroup.push(smallest.id);
+      this.values = array;
+    },
+    // QUICK SORT
     quickSort() {
-      animationFrames.stopAnimation();
+      this.stopAnimation();
       this.qSortStep(this.values);
-      animationFrames.addStep(this.sortEnd.bind(this));
+      animationFrames.addStep(this.sortEnd, this);
       animationFrames.startAnimation();
     },
     qSortStep(array, start = 0, end = array.length) {
       if (array.length < 2) {
         return array;
       }
-      const pivot = array[0]; // base element
+      const pivot = array[Math.floor(array.length / 2)]; // base element
       const less = [];
       const greater = [];
       // eslint-disable-next-line no-plusplus
       for (let i = 0; i < array.length; i++) {
+        animationFrames.addStep(this.qSortOneIteration, this, [array, array[i], pivot], 50);
         if (pivot.height > array[i].height) {
           less.push(array[i]);
-        } else if (i > 0) {
+        } else if (array[i] !== pivot) {
           greater.push(array[i]);
         }
       }
@@ -155,7 +173,12 @@ export default {
       const greaterEnd = greaterStart + greater.length;
 
       animationFrames.addStep(
-        this.qSortAnimated.bind(this, [...less, pivot, ...greater], start, end, pivot),
+        this.qSortAnimatedStep,
+        this,
+        [[...less, pivot, ...greater],
+          start,
+          end,
+        ],
       );
       return [
         ...this.qSortStep(less, lessStart, lessEnd),
@@ -163,28 +186,73 @@ export default {
         ...this.qSortStep(greater, greaterStart, greaterEnd),
       ];
     },
-    qSortAnimated(array, start, end, pivot) {
-      this.activeGroup = array.map(item => item.id);
-      this.selected = pivot.id;
+    qSortOneIteration(activeGroup, currentItem, pivotItem) {
+      this.activeGroup = activeGroup.map(item => item.id);
+      this.selected = pivotItem.id;
+      this.showCurrentItem(currentItem);
+    },
+    qSortAnimatedStep(array, start, end) {
       this.values.splice(start, end - start, ...array);
+    },
+    showCurrentItem(item) {
+      this.current = item.id || this.current;
+    },
+    bubbleSort() {
+      this.stopAnimation();
+      const array = Array.from(this.values);
+      let swapped = true;
+      let len = array.length;
+      for (let j = 0; j < array.length; j++) {
+        if (!swapped) break;
+        swapped = false;
+        len -= 1;
+        for (let i = 0; i < len; i++) {
+          const selected = array[i].id;
+          if (array[i + 1]) {
+            if (array[i].height > array[i + 1].height) {
+              [array[i], array[i + 1]] = [array[i + 1], array[i]];
+              swapped = true;
+            }
+          }
+          animationFrames.addStep(
+            this.bubbleSortAnimatedStep,
+            this,
+            [Array.from(array), selected],
+          );
+        }
+      }
+
+      animationFrames.addStep(this.sortEnd, this, [], 1);
+      animationFrames.startAnimation();
+    },
+    bubbleSortAnimatedStep(array, selected) {
+      this.selected = selected || this.selected;
+      this.values = array;
+    },
+    quickSort2() {
+
     },
     sortEnd() {
       this.activeGroup = [];
-      // this.sorted = true;
+      this.sorted = true;
       this.selected = null;
       this.active = null;
+      this.current = null;
     },
     stopAnimation() {
       this.activeGroup = [];
+      this.current = null;
       this.sorted = false;
       this.selected = null;
       this.active = null;
+      this.sortedGroup = [];
       animationFrames.stopAnimation();
     },
   },
   mounted() {
     this.$nextTick(() => {
       this.shuffle();
+      animationFrames.setDefaultTimeout(this.timeoutMS);
     });
   },
 };
@@ -208,6 +276,10 @@ export default {
   }
 
   .bottom-controls {
+    display: flex;
+    flex-direction: column;
+    height: 80px;
+    justify-content: space-between;
     width: 90%;
   }
 
@@ -225,65 +297,9 @@ export default {
   .array-vizual-block {
     flex-grow: 3;
     flex-shrink: 1;
-    /* width: 98%; */
-    /* height: 600px; */
     margin: 5px;
     display: flex;
     justify-content: space-around;
     align-items: flex-end;
   }
-
-  .array-item {
-    position: relative;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    background-color: #eeeeee73;
-    margin-right: 2px;
-    width: 10px;
-    min-width: 1px;
-    flex: 1 1 10px;
-    /* transition: background-color .3s ease-in; */
-  }
-
-  .array-item__main-block {
-    background-color: #ef5350;
-    transition: background-color .3s ease-in;
-    width: 100%;
-  }
-
-  .array-item.active .array-item__main-block {
-    position: relative;
-    background-color: #673ab7;
-  }
-
-  .array-item.selected .array-item__main-block {
-    position: relative;
-    background-color: #9a67ea;
-  }
-  .array-item .array-item__main-block::after {
-    content: "";
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-bottom: 10px solid red;
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    margin-left: -10px;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    transition: opacity .1s ease-in;
-  }
-  .array-item.sorted .array-item__main-block {
-    background-color: #2196f3;
-  }
-
-  .array-item.selected .array-item__main-block::after {
-    opacity: 1;
-  }
-  /* .array-item.active:after {
-    border-bottom: 5px solid black;
-    opacity: 1;
-  } */
 </style>

@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import Router from 'vue-router';
-import SortMehodsView from '@/components/sortMethods';
+import SortMehodsView from '@/components/arraySort/sortMethods';
 
 Vue.use(Router);
 

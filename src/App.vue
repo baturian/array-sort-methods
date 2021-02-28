@@ -16,6 +16,7 @@ export const store = new Vuex.Store({
     sortMethod: 'selection',
     sortMethods,
     arrayLength: 100,
+    timeoutMS: 50,
   },
   mutations: {
     changeSortMethod(state, method) {

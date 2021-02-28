@@ -1,6 +1,7 @@
 // eslint-disable-next-line import/prefer-default-export
 export const sortMethods = [
   { value: 'Selection sort', id: 'selection' },
-  { value: 'Merge sort', id: 'merge' },
+  { value: 'Bubble sort', id: 'bubble' },
   { value: 'Quick sort', id: 'quick' },
+  { value: 'Quick sort 2', id: 'quick2' },
 ];

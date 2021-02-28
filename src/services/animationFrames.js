@@ -1,12 +1,13 @@
 export default class AnimationFrames {
-    defaultTimeout = 200;
+    defaultTimeout = 0;
     steps = [];
     lastStepTime = null;
 
-    addStep(fn, timeout) {
+    addStep(fn, context, args, timeout) {
+      const funcArgs = args || [];
       this.steps.push({
-        func: fn,
-        timeout: timeout || this.defaultTimeout,
+        func: fn.bind(context, ...funcArgs),
+        timeout: timeout || 0,
       });
     }
 
@@ -20,12 +21,12 @@ export default class AnimationFrames {
 
     async step() {
       const timePassed = Date.now() - this.lastStepTime;
-      const stepsWithoutTimeout = Math.floor(timePassed / this.defaultTimeout);
+      const stepsWithoutTimeout = Math.floor(timePassed / (this.defaultTimeout || 1));
       if (stepsWithoutTimeout > 1) {
         await this.removeTimeoutForSeveralSteps(stepsWithoutTimeout);
       }
       if (this.steps.length) {
-        if (this.steps[0].timeout <= timePassed) {
+        if ((this.steps[0].timeout || this.defaultTimeout) <= timePassed) {
           this.lastStepTime = Date.now();
           const currentStep = this.steps.shift();
           currentStep.func();
@@ -52,5 +53,9 @@ export default class AnimationFrames {
     stopAnimation() {
       this.state = 'stop';
       this.steps = [];
+    }
+
+    setDefaultTimeout(timeout) {
+      this.defaultTimeout = timeout || 0;
     }
 }
