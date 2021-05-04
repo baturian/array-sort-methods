@@ -8,14 +8,14 @@ export default class TimedOutBehaivor {
     const funcArgs = args || [];
     this.job = {
       fn: fn.bind(context, ...funcArgs),
-      id: this.generateUID(),
+      id: this.constructor.generateUID(),
     };
     this.fn = fn;
     this.refreshTimer();
   }
 
   // eslint-disable-next-line class-methods-use-this
-  generateUID() {
+  static generateUID() {
     const id = `f${(+Date.now()).toString(16)}`;
     return id;
   }
