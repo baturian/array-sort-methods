@@ -2,6 +2,5 @@
 export const sortMethods = [
   { value: 'Selection sort', id: 'selection' },
   { value: 'Bubble sort', id: 'bubble' },
-  { value: 'Quick sort', id: 'quick' },
-  { value: 'Quick sort 2', id: 'quick2' },
+  { value: 'Quick sort', id: 'quick' }
 ];
